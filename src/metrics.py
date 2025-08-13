@@ -35,3 +35,54 @@ def competition_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
         return 0.0
     p = D.size / ape.size
     return float(1.0 - D.mean() / p)
+
+import numpy as np
+
+def custom_score(y_true, y_pred, eps=1e-12):
+    """
+    题目给出的两阶段评估指标。
+
+    参数
+    ----
+    y_true : array-like, shape (n_samples,)
+        真实值
+    y_pred : array-like, shape (n_samples,)
+        预测值
+    eps : float, optional
+        防止除以 0 的小量，默认 1e-12
+
+    返回
+    ----
+    float
+        最终得分，范围 [0, 1]
+    """
+    y_true = np.asarray(y_true, dtype=float)
+    y_pred = np.asarray(y_pred, dtype=float)
+
+    if y_true.size == 0:
+        return 0.0
+
+    # 绝对百分比误差
+    ape = np.abs((y_true - y_pred) / np.maximum(np.abs(y_true), eps))  # 避免 /0
+
+    # 第一阶段：超过 100% 的样本比例
+    bad_rate = np.mean(ape > 1.0)
+    if bad_rate > 0.30:
+        return 0.0
+
+    # 第二阶段：只保留 ape <= 1.0 的样本
+    mask = ape <= 1.0
+    good_ape = ape[mask]
+
+    if good_ape.size == 0:           # 极端：没有样本满足条件
+        return 0.0
+
+    # MAPE（仅 good_ape）
+    mape = np.mean(good_ape)
+
+    # 分数
+    fraction = good_ape.size / y_true.size
+    scaled_mape = mape / (fraction + eps)
+    score = max(0.0, 1.0 - scaled_mape)
+    return score
+
